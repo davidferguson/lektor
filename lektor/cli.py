@@ -116,18 +116,20 @@ class Context(object):
             return rv
         return self.get_project().get_output_path()
 
-    def get_env(self):
+    def get_env(self, extra_flags=None):
         if self._env is not None:
             return self._env
         from lektor.environment import Environment
-        env = Environment(self.get_project(), load_plugins=False)
+        env = Environment(self.get_project(), load_plugins=False,
+                          extra_flags=extra_flags)
         self._env = env
         return env
 
-    def load_plugins(self, reinstall=False):
+    def load_plugins(self, reinstall=False, extra_flags=None):
         from .packages import load_packages
         from .pluginsystem import initialize_plugins
-        load_packages(self.get_env(), reinstall=reinstall)
+        load_packages(self.get_env(extra_flags=extra_flags),
+                      reinstall=reinstall)
         initialize_plugins(self.get_env())
 
 
@@ -211,7 +213,7 @@ def build_cmd(ctx, output_path, watch, prune, verbosity,
     if output_path is None:
         output_path = ctx.get_default_output_path()
 
-    ctx.load_plugins()
+    ctx.load_plugins(extra_flags=extra_flags)
 
     env = ctx.get_env()
 
@@ -253,8 +255,9 @@ def build_cmd(ctx, output_path, watch, prune, verbosity,
 @click.option('-v', '--verbose', 'verbosity', count=True,
               help='Increases the verbosity of the logging.')
 @click.confirmation_option(help='Confirms the cleaning.')
+@extraflag
 @pass_context
-def clean_cmd(ctx, output_path, verbosity):
+def clean_cmd(ctx, output_path, verbosity, extra_flags):
     """Cleans the entire build folder.
 
     If not build folder is provided, the default build folder of the project
@@ -266,7 +269,7 @@ def clean_cmd(ctx, output_path, verbosity):
     if output_path is None:
         output_path = ctx.get_default_output_path()
 
-    ctx.load_plugins()
+    ctx.load_plugins(extra_flags=extra_flags)
     env = ctx.get_env()
 
     reporter = CliReporter(env, verbosity=verbosity)
@@ -312,7 +315,7 @@ def deploy_cmd(ctx, server, output_path, extra_flags, **credentials):
     if output_path is None:
         output_path = ctx.get_default_output_path()
 
-    ctx.load_plugins()
+    ctx.load_plugins(extra_flags=extra_flags)
     env = ctx.get_env()
     config = env.load_config()
 
@@ -377,7 +380,7 @@ def server_cmd(ctx, host, port, output_path, prune, verbosity,
     extra_flags = tuple(itertools.chain(extra_flags or (), build_flags or ()))
     if output_path is None:
         output_path = ctx.get_default_output_path()
-    ctx.load_plugins()
+    ctx.load_plugins(extra_flags=extra_flags)
     click.echo(' * Project path: %s' % ctx.get_project().project_path)
     click.echo(' * Output path: %s' % output_path)
     run_server((host, port), env=ctx.get_env(), output_path=output_path,
